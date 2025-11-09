@@ -1,0 +1,35 @@
+{
+  "name": "collaborative-canvas",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node dist/server/server.js",
+    "build": "tsc && vite build",
+    "build:server": "tsc",
+    "build:client": "vite build",
+    "server": "nodemon --watch dist/server dist/server/server.js",
+    "client": "vite",
+    "dev": "concurrently \"tsc --watch\" \"npm run server\" \"npm run client\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.5",
+    "@types/node": "^24.10.0",
+    "@types/uuid": "^10.0.0",
+    "concurrently": "^9.2.1",
+    "nodemon": "^3.1.10",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.1"
+  }
+}

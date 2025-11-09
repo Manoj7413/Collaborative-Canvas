@@ -20,10 +20,10 @@ const io = new Server(server, {
 const roomManager = new RoomManager();
 
 // Serve static files from client directory
-app.use(express.static(path.join(__dirname, "../client")));
+app.use(express.static(path.join(__dirname, "../dist/client")));
 
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "../client/index.html"));
+  res.sendFile(path.join(__dirname, "../dist/client/index.html"));
 });
 
 app.get("/api/rooms/:roomId/stats", (req, res) => {

@@ -1,17 +1,15 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist/client",
-  "devCommand": "npm run dev",
-  "cleanUrls": true,
-  "rewrites": [
-    { 
-      "source": "/socket.io/:match*",
-      "destination": "/api/socketio/:match*"
-    },
+  "builds": [
     {
-      "source": "/api/:match*",
-      "destination": "/api/:match*"
+      "src": "server/server.ts",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "server/server.ts"
     }
   ]
 }

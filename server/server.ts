@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 import { RoomManager } from "./rooms.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,11 +20,72 @@ const io = new Server(server, {
 
 const roomManager = new RoomManager();
 
-// Serve static files from client directory
-app.use(express.static(path.join(__dirname, "../dist/client")));
+// Debug: Check what directories exist
+console.log("Current directory:", __dirname);
+try {
+  const distContents = fs.readdirSync(path.join(__dirname, ".."));
+  console.log("Parent directory contents:", distContents);
+
+  if (fs.existsSync(path.join(__dirname, "../dist"))) {
+    const distFiles = fs.readdirSync(path.join(__dirname, "../dist"));
+    console.log("Dist directory contents:", distFiles);
+  }
+} catch (error) {
+  console.log("Directory check error:", error);
+}
+
+// Serve static files - try multiple possible paths
+const possibleStaticPaths = [
+  path.join(__dirname, "../dist/client"),
+  path.join(__dirname, "../dist"),
+  path.join(__dirname, "../../dist/client"),
+  path.join(__dirname, "../../dist"),
+];
+
+let staticPathFound = false;
+for (const staticPath of possibleStaticPaths) {
+  if (
+    fs.existsSync(staticPath) &&
+    fs.existsSync(path.join(staticPath, "index.html"))
+  ) {
+    console.log("Serving static files from:", staticPath);
+    app.use(express.static(staticPath));
+    staticPathFound = true;
+    break;
+  }
+}
+
+if (!staticPathFound) {
+  console.log("No static files found in expected locations");
+}
 
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "../dist/client/index.html"));
+  // Try multiple possible paths for index.html
+  const possibleIndexPaths = [
+    path.join(__dirname, "../dist/client/index.html"),
+    path.join(__dirname, "../dist/index.html"),
+    path.join(__dirname, "../../dist/client/index.html"),
+    path.join(__dirname, "../../dist/index.html"),
+  ];
+
+  for (const indexPath of possibleIndexPaths) {
+    if (fs.existsSync(indexPath)) {
+      console.log("Serving index.html from:", indexPath);
+      return res.sendFile(indexPath);
+    }
+  }
+
+  // Fallback: send a simple HTML response
+  res.send(`
+    <html>
+      <head><title>Collaborative Canvas</title></head>
+      <body>
+        <h1>Collaborative Canvas Server is Running</h1>
+        <p>But client files were not found. Check your build process.</p>
+        <p>Current dir: ${__dirname}</p>
+      </body>
+    </html>
+  `);
 });
 
 app.get("/api/rooms/:roomId/stats", (req, res) => {

@@ -6,8 +6,8 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "nodemon server/server.ts",
     "client": "vite client",
-    "build": "tsc && vite build client",
-    "start": "node dist/server/server.js",
+    "build": "tsc && vite build",
+    "start": "node dist/server.js",
     "vercel-build": "tsc && vite build client"
   },
   "dependencies": {

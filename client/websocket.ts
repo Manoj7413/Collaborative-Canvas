@@ -1,4 +1,4 @@
-import { Stroke, Point } from "./canvas";
+import { Stroke, Point } from "./canvas.js";
 import { io, Socket } from "socket.io-client";
 
 interface User {
@@ -194,7 +194,11 @@ export class WebSocketManager {
   }
 
   public onStrokePoint(
-    callback: (data: { strokeId: string; point: Point; userId: string }) => void
+    callback: (data: {
+      strokeId: string;
+      point: Point;
+      userId: string;
+    }) => void,
   ): void {
     this.socket.on("stroke-point", callback);
   }

@@ -1,8 +1,8 @@
-import { User, Stroke } from "./drawing-state.js";
+import { User, Stroke } from "./drawing-state.ts";
 import {
   DrawingStateManager,
   createDrawingStateManager,
-} from "./drawing-state.js";
+} from "./drawing-state.ts";
 
 interface Room {
   state: DrawingStateManager;

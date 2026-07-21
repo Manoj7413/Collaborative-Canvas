@@ -1,6 +1,6 @@
 # Collaborative Drawing Canvas
 
-A real-time multi-user drawing application built with TypeScript, HTML5 Canvas, and WebSockets.
+A multi-user drawing application built with TypeScript, HTML5 Canvas, and WebSockets where multiple people can draw simultaneously on the same canvas with real-time synchronization.
 
 ## Features
 

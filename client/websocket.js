@@ -1,50 +1,17 @@
-import { Stroke, Point } from "./canvas.js";
-import { io, Socket } from "socket.io-client";
-
-interface User {
-  id: string;
-  color: string;
-  name: string;
-}
-
-interface ServerToClientEvents {
-  "user-joined": (users: User[]) => void;
-  "user-left": (userId: string) => void;
-  "stroke-start": (stroke: Stroke) => void;
-  "stroke-point": (data: {
-    strokeId: string;
-    point: Point;
-    userId: string;
-  }) => void;
-  "stroke-end": (stroke: Stroke) => void;
-  undo: (strokeId: string) => void;
-  redo: (strokeId: string) => void;
-  clear: () => void;
-  "cursor-move": (data: { userId: string; x: number; y: number }) => void;
-  "full-state": (state: any) => void;
-  pong: (latency: number) => void;
-}
-
-interface ClientToServerEvents {
-  "join-room": (roomId: string) => void;
-  "stroke-start": (stroke: Stroke) => void;
-  "stroke-point": (data: { strokeId: string; point: Point }) => void;
-  "stroke-end": (stroke: Stroke) => void;
-  undo: (strokeId: string) => void;
-  redo: (strokeId: string) => void;
-  clear: () => void;
-  "cursor-move": (point: Point) => void;
-  ping: (callback: (startTime: number) => void) => void;
-}
-
 export class WebSocketManager {
-  private socket: Socket<ServerToClientEvents, ClientToServerEvents>;
-  private roomId: string = "default";
-  private currentUser: User | null = null;
-  private latency: number = 0;
-
   constructor() {
-    this.socket = io({
+    this.roomId = "default";
+    this.currentUser = null;
+    this.latency = 0;
+    this.setConnectionStatus("Connecting...");
+
+    if (!window.io) {
+      console.error("Socket.IO client not loaded");
+      this.setConnectionStatus("Socket.IO client missing");
+      return;
+    }
+
+    this.socket = window.io({
       transports: ["websocket"],
       upgrade: false,
     });
@@ -53,22 +20,28 @@ export class WebSocketManager {
     this.startLatencyCheck();
   }
 
-  private setupEventListeners(): void {
+  setupEventListeners() {
     this.socket.on("connect", () => {
       console.log("Connected to server");
+      this.setConnectionStatus("Connected");
       this.joinRoom(this.roomId);
+    });
+
+    this.socket.on("connect_error", () => {
+      this.setConnectionStatus("Connection failed");
     });
 
     this.socket.on("disconnect", () => {
       console.log("Disconnected from server");
+      this.setConnectionStatus("Disconnected");
     });
 
-    this.socket.on("user-joined", (users: User[]) => {
+    this.socket.on("user-joined", (users) => {
       this.currentUser = users.find((u) => u.id === this.socket.id) || null;
       this.updateUserList(users);
     });
 
-    this.socket.on("user-left", (userId: string) => {
+    this.socket.on("user-left", (userId) => {
       this.removeCursor(userId);
     });
 
@@ -76,13 +49,13 @@ export class WebSocketManager {
       this.updateRemoteCursor(data.userId, data.x, data.y);
     });
 
-    this.socket.on("pong", (latency: number) => {
+    this.socket.on("pong", (latency) => {
       this.latency = latency;
       this.updateLatencyDisplay();
     });
   }
 
-  private startLatencyCheck(): void {
+  startLatencyCheck() {
     setInterval(() => {
       if (this.socket.connected) {
         const startTime = Date.now();
@@ -94,7 +67,7 @@ export class WebSocketManager {
     }, 1000);
   }
 
-  private updateUserList(users: User[]): void {
+  updateUserList(users) {
     const userList = document.getElementById("userList");
     if (!userList) return;
 
@@ -113,7 +86,7 @@ export class WebSocketManager {
     }
   }
 
-  private updateRemoteCursor(userId: string, x: number, y: number): void {
+  updateRemoteCursor(userId, x, y) {
     let cursor = document.getElementById(`cursor-${userId}`);
 
     if (!cursor) {
@@ -132,102 +105,99 @@ export class WebSocketManager {
     }
   }
 
-  private removeCursor(userId: string): void {
+  removeCursor(userId) {
     const cursor = document.getElementById(`cursor-${userId}`);
     if (cursor) {
       cursor.remove();
     }
   }
 
-  private getUserColor(userId: string): string {
-    // This would be populated from server user data
+  getUserColor(userId) {
     const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7"];
-    const index =
-      userId.split("").reduce((a, b) => a + b.charCodeAt(0), 0) % colors.length;
+    const index = userId.split("").reduce((a, b) => a + b.charCodeAt(0), 0) % colors.length;
     return colors[index];
   }
 
-  private updateLatencyDisplay(): void {
+  updateLatencyDisplay() {
     const latencyDisplay = document.getElementById("latencyDisplay");
     if (latencyDisplay) {
       latencyDisplay.textContent = `Ping: ${this.latency}ms`;
     }
   }
 
-  // Public methods
-  public joinRoom(roomId: string): void {
+  setConnectionStatus(status) {
+    const connectionStatus = document.getElementById("connectionStatus");
+    if (connectionStatus) {
+      connectionStatus.textContent = status;
+    }
+  }
+
+  joinRoom(roomId) {
     this.roomId = roomId;
     this.socket.emit("join-room", roomId);
   }
 
-  public sendStrokeStart(stroke: Stroke): void {
+  sendStrokeStart(stroke) {
     this.socket.emit("stroke-start", stroke);
   }
 
-  public sendStrokePoint(strokeId: string, point: Point): void {
+  sendStrokePoint(strokeId, point) {
     this.socket.emit("stroke-point", { strokeId, point });
   }
 
-  public sendStrokeEnd(stroke: Stroke): void {
+  sendStrokeEnd(stroke) {
     this.socket.emit("stroke-end", stroke);
   }
 
-  public sendUndo(strokeId: string): void {
+  sendUndo(strokeId) {
     this.socket.emit("undo", strokeId);
   }
 
-  public sendRedo(strokeId: string): void {
+  sendRedo(strokeId) {
     this.socket.emit("redo", strokeId);
   }
 
-  public sendClear(): void {
+  sendClear() {
     this.socket.emit("clear");
   }
 
-  public sendCursorMove(point: Point): void {
+  sendCursorMove(point) {
     this.socket.emit("cursor-move", point);
   }
 
-  // Event registration
-  public onStrokeStart(callback: (stroke: Stroke) => void): void {
+  onStrokeStart(callback) {
     this.socket.on("stroke-start", callback);
   }
 
-  public onStrokePoint(
-    callback: (data: {
-      strokeId: string;
-      point: Point;
-      userId: string;
-    }) => void,
-  ): void {
+  onStrokePoint(callback) {
     this.socket.on("stroke-point", callback);
   }
 
-  public onStrokeEnd(callback: (stroke: Stroke) => void): void {
+  onStrokeEnd(callback) {
     this.socket.on("stroke-end", callback);
   }
 
-  public onUndo(callback: (strokeId: string) => void): void {
+  onUndo(callback) {
     this.socket.on("undo", callback);
   }
 
-  public onRedo(callback: (strokeId: string) => void): void {
+  onRedo(callback) {
     this.socket.on("redo", callback);
   }
 
-  public onClear(callback: () => void): void {
+  onClear(callback) {
     this.socket.on("clear", callback);
   }
 
-  public onFullState(callback: (state: any) => void): void {
+  onFullState(callback) {
     this.socket.on("full-state", callback);
   }
 
-  public getLatency(): number {
+  getLatency() {
     return this.latency;
   }
 
-  public isConnected(): boolean {
+  isConnected() {
     return this.socket.connected;
   }
 }

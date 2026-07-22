@@ -1,10 +1,9 @@
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import { RoomManager } from "../server/rooms.ts";
+import { RoomManager } from "./rooms.js";
 import path from "path";
 import { fileURLToPath } from "url";
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -18,12 +17,13 @@ const io = new Server(server, {
 });
 
 const roomManager = new RoomManager();
+const clientRoot = path.join(__dirname, "../client");
 
 // Serve static files from client directory
-app.use(express.static(path.join(__dirname, "../dist/client")));
+app.use(express.static(clientRoot));
 
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "../dist/client/index.html"));
+  res.sendFile(path.join(clientRoot, "index.html"));
 });
 
 app.get("/api/rooms/:roomId/stats", (req, res) => {

@@ -1,47 +1,17 @@
-export interface Point {
-  x: number;
-  y: number;
-}
-
-export interface Stroke {
-  id: string;
-  userId: string;
-  points: Point[];
-  color: string;
-  width: number;
-  tool: "brush" | "eraser";
-  timestamp: number;
-}
-
-export interface DrawingState {
-  strokes: Stroke[];
-  redoStack: Stroke[];
-}
-
 export class DrawingCanvas {
-  private canvas: HTMLCanvasElement;
-  private cursorCanvas: HTMLCanvasElement;
-  private ctx: CanvasRenderingContext2D;
-  private cursorCtx: CanvasRenderingContext2D;
-  private isDrawing: boolean = false;
-  private currentStroke: Stroke | null = null;
-  private state: DrawingState = { strokes: [], redoStack: [] };
+  constructor(canvasId, cursorCanvasId) {
+    this.isDrawing = false;
+    this.currentStroke = null;
+    this.state = { strokes: [], redoStack: [] };
+    this.currentTool = "brush";
+    this.currentColor = "#000000";
+    this.currentWidth = 5;
+    this.onStrokeStart = undefined;
+    this.onStrokePoint = undefined;
+    this.onStrokeEnd = undefined;
 
-  // Tool settings
-  private currentTool: "brush" | "eraser" = "brush";
-  private currentColor: string = "#000000";
-  private currentWidth: number = 5;
-
-  // Callbacks
-  private onStrokeStart?: (stroke: Stroke) => void;
-  private onStrokePoint?: (strokeId: string, point: Point) => void;
-  private onStrokeEnd?: (stroke: Stroke) => void;
-
-  constructor(canvasId: string, cursorCanvasId: string) {
-    this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
-    this.cursorCanvas = document.getElementById(
-      cursorCanvasId
-    ) as HTMLCanvasElement;
+    this.canvas = document.getElementById(canvasId);
+    this.cursorCanvas = document.getElementById(cursorCanvasId);
 
     const ctx = this.canvas.getContext("2d");
     const cursorCtx = this.cursorCanvas.getContext("2d");
@@ -57,26 +27,21 @@ export class DrawingCanvas {
     this.resizeCanvas();
   }
 
-  private setupEventListeners(): void {
+  setupEventListeners() {
     window.addEventListener("resize", () => this.resizeCanvas());
 
-    // Mouse events
     this.canvas.addEventListener("mousedown", this.handleMouseDown.bind(this));
     this.canvas.addEventListener("mousemove", this.handleMouseMove.bind(this));
     this.canvas.addEventListener("mouseup", this.handleMouseUp.bind(this));
     this.canvas.addEventListener("mouseout", this.handleMouseUp.bind(this));
 
-    // Touch events
-    this.canvas.addEventListener(
-      "touchstart",
-      this.handleTouchStart.bind(this)
-    );
+    this.canvas.addEventListener("touchstart", this.handleTouchStart.bind(this));
     this.canvas.addEventListener("touchmove", this.handleTouchMove.bind(this));
     this.canvas.addEventListener("touchend", this.handleTouchEnd.bind(this));
   }
 
-  private resizeCanvas(): void {
-    const container = this.canvas.parentElement!;
+  resizeCanvas() {
+    const container = this.canvas.parentElement;
     const rect = container.getBoundingClientRect();
 
     this.canvas.width = rect.width;
@@ -88,7 +53,7 @@ export class DrawingCanvas {
     this.redraw();
   }
 
-  private getCanvasPoint(clientX: number, clientY: number): Point {
+  getCanvasPoint(clientX, clientY) {
     const rect = this.canvas.getBoundingClientRect();
     return {
       x: clientX - rect.left,
@@ -96,21 +61,21 @@ export class DrawingCanvas {
     };
   }
 
-  private handleMouseDown(e: MouseEvent): void {
+  handleMouseDown(e) {
     e.preventDefault();
     this.startDrawing(this.getCanvasPoint(e.clientX, e.clientY));
   }
 
-  private handleMouseMove(e: MouseEvent): void {
+  handleMouseMove(e) {
     const point = this.getCanvasPoint(e.clientX, e.clientY);
     this.updateDrawing(point);
   }
 
-  private handleMouseUp(e: MouseEvent): void {
+  handleMouseUp() {
     this.endDrawing();
   }
 
-  private handleTouchStart(e: TouchEvent): void {
+  handleTouchStart(e) {
     e.preventDefault();
     if (e.touches.length === 1) {
       const touch = e.touches[0];
@@ -118,7 +83,7 @@ export class DrawingCanvas {
     }
   }
 
-  private handleTouchMove(e: TouchEvent): void {
+  handleTouchMove(e) {
     e.preventDefault();
     if (e.touches.length === 1 && this.isDrawing) {
       const touch = e.touches[0];
@@ -126,16 +91,16 @@ export class DrawingCanvas {
     }
   }
 
-  private handleTouchEnd(e: TouchEvent): void {
+  handleTouchEnd() {
     this.endDrawing();
   }
 
-  private startDrawing(point: Point): void {
+  startDrawing(point) {
     this.isDrawing = true;
 
     this.currentStroke = {
       id: Math.random().toString(36).substr(2, 9),
-      userId: "local", // Will be set by WebSocket manager
+      userId: "local",
       points: [point],
       color: this.currentColor,
       width: this.currentWidth,
@@ -147,35 +112,31 @@ export class DrawingCanvas {
     this.drawPoint(this.currentStroke, point);
   }
 
-  private updateDrawing(point: Point): void {
+  updateDrawing(point) {
     if (!this.isDrawing || !this.currentStroke) return;
 
     this.currentStroke.points.push(point);
     this.onStrokePoint?.(this.currentStroke.id, point);
-
-    // Draw locally for immediate feedback
     this.drawPoint(this.currentStroke, point);
   }
 
-  private endDrawing(): void {
+  endDrawing() {
     if (!this.isDrawing || !this.currentStroke) return;
 
     this.isDrawing = false;
 
     if (this.currentStroke.points.length > 1) {
       this.state.strokes.push(this.currentStroke);
-      this.state.redoStack = []; // Clear redo stack on new action
+      this.state.redoStack = [];
       this.onStrokeEnd?.(this.currentStroke);
     }
 
     this.currentStroke = null;
   }
 
-  private drawPoint(stroke: Stroke, point: Point): void {
-    this.ctx.globalCompositeOperation =
-      stroke.tool === "eraser" ? "destination-out" : "source-over";
-    this.ctx.strokeStyle =
-      stroke.tool === "eraser" ? "rgba(0,0,0,1)" : stroke.color;
+  drawPoint(stroke, point) {
+    this.ctx.globalCompositeOperation = stroke.tool === "eraser" ? "destination-out" : "source-over";
+    this.ctx.strokeStyle = stroke.tool === "eraser" ? "rgba(0,0,0,1)" : stroke.color;
     this.ctx.lineWidth = stroke.width;
     this.ctx.lineCap = "round";
     this.ctx.lineJoin = "round";
@@ -193,18 +154,14 @@ export class DrawingCanvas {
     }
   }
 
-  public redraw(): void {
-    // Clear canvas
+  redraw() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Redraw all strokes
     this.state.strokes.forEach((stroke) => {
       if (stroke.points.length === 0) return;
 
-      this.ctx.globalCompositeOperation =
-        stroke.tool === "eraser" ? "destination-out" : "source-over";
-      this.ctx.strokeStyle =
-        stroke.tool === "eraser" ? "rgba(0,0,0,1)" : stroke.color;
+      this.ctx.globalCompositeOperation = stroke.tool === "eraser" ? "destination-out" : "source-over";
+      this.ctx.strokeStyle = stroke.tool === "eraser" ? "rgba(0,0,0,1)" : stroke.color;
       this.ctx.lineWidth = stroke.width;
       this.ctx.lineCap = "round";
       this.ctx.lineJoin = "round";
@@ -220,70 +177,66 @@ export class DrawingCanvas {
     });
   }
 
-  // Public methods
-  public setTool(tool: "brush" | "eraser"): void {
+  setTool(tool) {
     this.currentTool = tool;
   }
 
-  public setColor(color: string): void {
+  setColor(color) {
     this.currentColor = color;
   }
 
-  public setWidth(width: number): void {
+  setWidth(width) {
     this.currentWidth = width;
   }
 
-  public addRemoteStroke(stroke: Stroke): void {
+  addRemoteStroke(stroke) {
     this.state.strokes.push(stroke);
     this.redraw();
   }
 
-  public undo(): Stroke | null {
+  undo() {
     if (this.state.strokes.length === 0) return null;
 
-    const stroke = this.state.strokes.pop()!;
+    const stroke = this.state.strokes.pop();
     this.state.redoStack.push(stroke);
     this.redraw();
 
     return stroke;
   }
 
-  public redo(): Stroke | null {
+  redo() {
     if (this.state.redoStack.length === 0) return null;
 
-    const stroke = this.state.redoStack.pop()!;
+    const stroke = this.state.redoStack.pop();
     this.state.strokes.push(stroke);
     this.redraw();
 
     return stroke;
   }
 
-  public clear(): void {
+  clear() {
     this.state.strokes = [];
     this.state.redoStack = [];
     this.redraw();
   }
 
-  // Callback setters
-  public setOnStrokeStart(callback: (stroke: Stroke) => void): void {
+  setOnStrokeStart(callback) {
     this.onStrokeStart = callback;
   }
 
-  public setOnStrokePoint(
-    callback: (strokeId: string, point: Point) => void
-  ): void {
+  setOnStrokePoint(callback) {
     this.onStrokePoint = callback;
   }
 
-  public setOnStrokeEnd(callback: (stroke: Stroke) => void): void {
+  setOnStrokeEnd(callback) {
     this.onStrokeEnd = callback;
   }
 
-  public getState(): DrawingState {
+  getState() {
     return JSON.parse(JSON.stringify(this.state));
   }
 
-  public setState(state: DrawingState): void {
+  setState(state) {
     this.state = state;
     this.redraw();
   }

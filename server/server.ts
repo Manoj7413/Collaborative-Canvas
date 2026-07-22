@@ -17,9 +17,9 @@ const io = new Server(server, {
 });
 
 const roomManager = new RoomManager();
-const clientRoot = path.join(__dirname, "../client");
+const clientRoot = path.join(__dirname, "client");
 
-// Serve static files from client directory
+// Serve static files from bundled client directory
 app.use(express.static(clientRoot));
 
 app.get("/", (req, res) => {

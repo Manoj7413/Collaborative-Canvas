@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "tsx server/server.ts",
+    "build": "node scripts/build-client.js",
+    "start": "npm run build && tsx server/server.ts",
     "dev": "tsx server/server.ts"
   },
   "dependencies": {

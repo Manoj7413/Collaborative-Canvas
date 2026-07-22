@@ -8,5 +8,5 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["server/**/*.ts", "client/**/*.ts", "server/rooms.js"]
+  "include": ["server/**/*.ts", "server/client/**/*.ts", "server/rooms.js"]
 }

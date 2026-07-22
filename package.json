@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "tsx server/server.ts",
-    "dev": "tsx server/server.ts"
+    "dev": "tsx server/server.ts",
+    "build": "node scripts/build-client.js"
   },
   "dependencies": {
     "express": "^4.22.2",
